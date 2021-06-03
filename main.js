@@ -106,6 +106,7 @@ function trashFolder(name, root) {
 }
 
 function unTrashFolder(name, root) {
+  console.log(name);
   var folder = stringToFolder(name, root);
   deleteFolder(name, root);
   while(folderExists(folder.origin, root)) {
@@ -152,11 +153,15 @@ function folderExists(name, parent) {
 }
 
 function getNameRelativeTo(folder, parent) {
-  for(var child in parent.children) {
+  for(let child in parent.children) {
     if(Object.is(parent.children[child], folder)) {
       return child;
     }
-    return child + '/' + getNameRelativeTo(folder, parent.children[child]);
+  }
+
+  for(let child in parent.children) {
+    var res = getNameRelativeTo(folder, parent.children[child]);
+    if(res) return child + '/' + res;
   }
 }
 
@@ -195,7 +200,7 @@ function refreshView() {
   parentUl.innerHTML = '';
 
   function makeList(ul, tree, isTrash) {
-    for(var node in tree.children) {
+    for(let node in tree.children) {
       var li = document.createElement('LI');
       if(isTrash)
         li.innerHTML = '<a href="#" onclick="requestUnTrashFolder(\'' + getNameRelativeTo(tree.children[node], folderTree) + '\')">' + tree.children[node].name + '</a>';
