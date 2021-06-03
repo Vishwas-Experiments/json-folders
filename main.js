@@ -12,6 +12,11 @@ folderTree = {
     f1: {
       name: 'f1',
       children: {}
+    },
+
+    "*trash*" : {
+      name: 'trash',
+      children: {}
     }
   }
 };
@@ -74,7 +79,7 @@ function moveFolder(source, destination, parent) {
 
   var conflictingNames = false;
   var increment = 0;
-  
+
   do {
     for(var childFolderInDest in destinationFolder.children) {
       if(childFolderInDest == sourceFolder.name) {
@@ -89,6 +94,28 @@ function moveFolder(source, destination, parent) {
 
   deleteFolder(source, parent);
   addFolder(sourceFolder, destinationFolder);
+}
+
+function trashFolder(name, root) {
+  var folder = stringToFolder(name, root);
+  deleteFolder(name, root);
+
+  folder.origin = name;
+
+  root.children['*trash*'].children[folder.name + Date.now()] = folder;
+}
+
+function unTrashFolder(name, root) {
+  var folder = stringToFolder(name, root);
+  deleteFolder(name, root);
+  while(folderExists(folder.origin, root)) {
+    folder.origin += '_';
+  }
+  addFolder(folder.origin, root);
+  var restoredFolder = stringToFolder(folder.origin, root);
+  for(var child in folder.children) {
+    addFolder(folder.children[child], restoredFolder);
+  }
 }
 
 function findFolder(name, parent) {
@@ -124,6 +151,15 @@ function folderExists(name, parent) {
   return true;
 }
 
+function getNameRelativeTo(folder, parent) {
+  for(var child in parent.children) {
+    if(Object.is(parent.children[child], folder)) {
+      return child;
+    }
+    return child + '/' + getNameRelativeTo(folder, parent.children[child]);
+  }
+}
+
 function requestAddFolder() {
   var folderName = window.prompt('Enter folder name');
   addFolder(folderName, folderTree);
@@ -143,18 +179,32 @@ function requestMoveFolder() {
   refreshView();
 }
 
+function requestTrashFolder() {
+  var folderName = window.prompt('Enter folder to trash');
+  trashFolder(folderName, folderTree);
+  refreshView();
+}
+
+function requestUnTrashFolder(folderName) {
+  unTrashFolder(folderName, folderTree);
+  refreshView();
+}
+
 var parentUl = document.getElementById('json');
 function refreshView() {
   parentUl.innerHTML = '';
 
-  function makeList(ul, tree) {
+  function makeList(ul, tree, isTrash) {
     for(var node in tree.children) {
       var li = document.createElement('LI');
-      li.innerText = tree.children[node].name;
+      if(isTrash)
+        li.innerHTML = '<a href="#" onclick="requestUnTrashFolder(\'' + getNameRelativeTo(tree.children[node], folderTree) + '\')">' + tree.children[node].name + '</a>';
+      else
+        li.innerText = tree.children[node].name;
       ul.appendChild(li);
       if(Object.keys(tree.children[node].children).length > 0) {
         var childUl = document.createElement('UL');
-        makeList(childUl, tree.children[node]);
+        makeList(childUl, tree.children[node], tree.children[node].name === 'trash');
         ul.appendChild(childUl);
       }
     }
